@@ -122,13 +122,13 @@ let PADR={act:null,jump:null};
 function layoutPad(){const pad=$('pad'),ba=$('bAct'),bj=$('bJump'),hint=$('swipeHint');if(!pad)return;
  if(portrait){const top=gameH,ph=H-top;pad.style.top=top+'px';pad.style.height=ph+'px';
   const big=Math.round(clamp(ph*0.36,92,124)),sm=Math.round(big*0.84),bot=Math.round(clamp(ph*0.14,18,46))+SAFE.b;
-  Object.assign(ba.style,{width:big+'px',height:big+'px',right:(16+SAFE.r)+'px',bottom:bot+'px'});
-  Object.assign(bj.style,{width:sm+'px',height:sm+'px',right:(16+SAFE.r+big+14)+'px',bottom:(bot+big*0.42)+'px'});
-  if(bot+big*0.42+sm>ph-8)bj.style.bottom=(ph-sm-8)+'px';
+  /* Oct 30: JUMP bottom-right, ACTION bottom-left (mirrored, same size) */
+  Object.assign(bj.style,{width:big+'px',height:big+'px',left:'',right:(16+SAFE.r)+'px',bottom:bot+'px'});
+  Object.assign(ba.style,{width:big+'px',height:big+'px',right:'',left:(16+SAFE.l)+'px',bottom:bot+'px'});
   hint.style.display='';Object.assign(hint.style,{top:'12px',left:(14+SAFE.l)+'px',right:'14px'})}
  else{pad.style.top='0';pad.style.height=H+'px';const big=Math.round(clamp(H*0.21,72,96)),sm=Math.round(big*0.82);
-  Object.assign(ba.style,{width:big+'px',height:big+'px',right:(14+SAFE.r)+'px',bottom:(12+SAFE.b)+'px'});
-  Object.assign(bj.style,{width:sm+'px',height:sm+'px',right:(14+SAFE.r+big+10)+'px',bottom:(12+SAFE.b+big*0.18)+'px'});
+  Object.assign(bj.style,{width:big+'px',height:big+'px',left:'',right:(14+SAFE.r)+'px',bottom:(12+SAFE.b)+'px'});
+  Object.assign(ba.style,{width:big+'px',height:big+'px',right:'',left:(14+SAFE.l)+'px',bottom:(12+SAFE.b)+'px'});
   hint.style.display='none'}
  requestAnimationFrame(()=>{const r=e=>{const b=e.getBoundingClientRect();return{x:b.left,y:b.top,w:b.width,h:b.height}};PADR.act=r(ba);PADR.jump=r(bj)})}
 addEventListener('resize',resize);addEventListener('orientationchange',()=>setTimeout(resize,120));
