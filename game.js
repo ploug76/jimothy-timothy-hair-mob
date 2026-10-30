@@ -899,9 +899,9 @@ function ctlLine(){return GP.on?'🎮 Stick/D-pad move · A jump · X or B actio
 function refreshCtlHint(){const h=document.querySelector('#ui .ctl');if(h)h.innerHTML=ctlLine()}
 const LOGO=`<div class="logo"><div class="l1">JIMOTHY TIMOTHY</div><div class="l2">AND THE HAIR MOB</div><div class="l3">WORD ON THE STREET, THEY CALL HIM J.T.!</div></div>`;
 function titleScreen(){state='title';G=null;AU.music('title');const cont=save.reached>0;
- show(`${LOGO}<div class="tbtns"><button class="btn go" data-a="play">▶ ${cont?'CONTINUE':'PLAY'}</button>${cont?'<button class="btn alt" data-a="new">NEW GAME</button>':''}
+ show(`${LOGO}<div class="tbot"><div class="tbtns"><button class="btn go" data-a="play">▶ ${cont?'CONTINUE':'PLAY'}</button>${cont?'<button class="btn alt" data-a="new">NEW GAME</button>':''}
  <button class="btn alt" data-a="levels">MAP BOARD</button><button class="btn alt2" data-a="book">FOUND-IT BOOK</button><button class="btn dim" data-a="how">HOW TO PLAY</button></div>
- <p class="tag">"It's not stealing if it's in the trash."</p>${save.best?'<p class="sub">Best score: '+save.best.toLocaleString()+'</p>':''}<p class="ctl sub">${ctlLine()}</p>`,'title')}
+ <p class="tag">"It's not stealing if it's in the trash."</p>${save.best?'<p class="sub">Best score: '+save.best.toLocaleString()+'</p>':''}<p class="ctl sub">${ctlLine()}</p></div>`,'title')}
 function storyScreen(i){state='story';const s=STORY_INTRO[i];
  show(`<img class="story" src="art/${s.img}.webp?v=${VERSION}" alt=""><p class="big">${s.t}</p><button class="btn go" data-a="story" data-v="${i+1}">NEXT ▶</button>`,'menu');AU.music('title')}
 function planScreen(i){state='plan';const st=STAGES[i],Wd=WORLDS[st.w];const icon=st.kind==='drive'?'jeep_side':st.kind==='boss'?'jt_point':'jt_point';
