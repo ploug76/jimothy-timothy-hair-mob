@@ -1091,3 +1091,289 @@ function botDrive(o){const D=G.D;if(D.dead||G.p.cut)return o;let best=D.x,bs=1e9
  for(const q of D.objs){const ds=q.s-D.s;if(ds<0||ds>420)continue;if(ds>420)break;if(q.k==='pigeon'&&!q.fly&&ds<300&&!(D.honk>0))o.A=1;if(q.k==='cone'&&!q.gone&&ds<70&&ds>20&&Math.abs(q.x-D.x)<36&&!(D.hop>0))o.J=1}
  return o}
 
+/* ===== MINI-GAMES (Hair Sorting, Home Sweet Tree, First Flight). Self-contained: own loop, own input. ===== */
+const MG={cur:null,last:0,ptr:null,pad:{},padP:{},key:{},keyP:{},best:{}};
+const MG_KEY='jthm_mini';try{MG.best=JSON.parse(localStorage.getItem(MG_KEY)||'{}')||{}}catch(e){MG.best={}}
+function mgSave(){try{localStorage.setItem(MG_KEY,JSON.stringify(MG.best))}catch(e){}}
+const MINIS=[
+ {id:'sort',name:'Hair Sorting',art:'hoodie',blurb:'Curly, fluffy or straight? Swipe each clump to the right bird!',make:()=>SORT},
+ {id:'tree',name:'Home Sweet Tree',art:'dc_lantern',blurb:'Decorate the Hair Mob hideout with found things!',make:()=>TREE},
+ {id:'fly',name:'First Flight',art:'bd_happy',blurb:"Adam and Eve's babies are learning to fly. Tap to flap!",make:()=>FLY}];
+/* ---- title hook: one extra button, nothing else on the title changes ---- */
+const _mgTitle=titleScreen;
+titleScreen=function(){_mgTitle();const t=document.querySelector('#ui .tbtns');if(t&&!t.querySelector('[data-a="minis"]')){const b=document.createElement('button');b.className='btn alt2 mgb';b.dataset.a='minis';b.textContent='★ MINI-GAMES';
+ b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();AU.unlock();AU.fx('menu');act('minis')});const how=t.querySelector('[data-a="how"]');t.insertBefore(b,how||null)}};
+const _mgAct=act;
+act=function(a,v){if(a==='minis')return miniMenu();if(a==='mini')return miniStart(v);if(a==='minimenu')return miniMenu();return _mgAct(a,v)};
+function miniMenu(){state='minimenu';G=null;mgBar(false);document.body.classList.remove('mini');AU.music('title');
+ let h='<h2>MINI-GAMES</h2><div class="mgl">';
+ for(const m of MINIS){const b=MG.best[m.id];h+=`<button class="btn mgc" data-a="mini" data-v="${m.id}"><img src="art/${m.art}.webp?v=${VERSION}" alt=""><span><b>${m.name}</b><small>${m.blurb}</small>${b&&b.stars?'<em>'+'★'.repeat(b.stars)+'☆'.repeat(3-b.stars)+'</em>':''}</span></button>`}
+ show(h+'</div><button class="btn alt" data-a="back">◀ BACK</button>','menu')}
+/* ---- top bar (DOM) ---- */
+function mgBar(on,title){let b=$('mgbar');if(!b){b=document.createElement('div');b.id='mgbar';b.innerHTML='<button id="mgBack" class="hb" type="button" aria-label="Back">◀</button><b id="mgTitle"></b><button id="mgDone" class="hb wide" type="button">DONE</button>';document.body.appendChild(b);
+  $('mgBack').addEventListener('click',e=>{e.stopPropagation();AU.unlock();AU.fx('menu');miniExit()});$('mgDone').addEventListener('click',e=>{e.stopPropagation();AU.unlock();if(MG.cur&&MG.cur.done)MG.cur.done()})}
+ b.hidden=!on;if(title)$('mgTitle').textContent=title;$('mgDone').hidden=true}
+function miniStart(id){const m=MINIS.find(x=>x.id===id);if(!m)return;hideUI();clearInput();state='mini';G=null;document.body.classList.add('mini');
+ MG.cur=m.make();MG.cur.id=id;mgBar(true,m.name);MG.ptr=null;MG.cur.init();MG.last=performance.now()}
+function miniExit(){if(MG.cur&&MG.cur.exit)MG.cur.exit();MG.cur=null;mgBar(false);miniMenu()}
+function miniResult(id,stars,lines,again){MG.best[id]=MG.best[id]||{};if(stars>(MG.best[id].stars||0))MG.best[id].stars=stars;mgSave();state='minidone';mgBar(false);document.body.classList.remove('mini');AU.music('win');AU.fx('clear');
+ show(`<h2>${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</h2>${lines.map(l=>'<p class="big">'+l+'</p>').join('')}<div class="tbtns"><button class="btn go" data-a="mini" data-v="${id}">${again||'PLAY AGAIN'}</button><button class="btn alt" data-a="minimenu">MINI-GAMES</button></div>`,'menu')}
+/* ---- input: pointer (touch/mouse), keys, gamepad ---- */
+function mgPos(e){return{x:e.clientX,y:e.clientY}}
+function mgDown(e){if(state!=='mini'||!MG.cur)return;e.preventDefault();AU.unlock();const p=mgPos(e);MG.ptr={id:e.pointerId,x0:p.x,y0:p.y,x:p.x,y:p.y,t0:performance.now(),moved:false};if(MG.cur.down)MG.cur.down(p.x,p.y)}
+function mgMove(e){if(state!=='mini'||!MG.cur||!MG.ptr||e.pointerId!==MG.ptr.id)return;e.preventDefault();const p=mgPos(e),q=MG.ptr;q.x=p.x;q.y=p.y;if(Math.hypot(q.x-q.x0,q.y-q.y0)>12)q.moved=true;if(MG.cur.move)MG.cur.move(p.x,p.y,q)}
+function mgUp(e){if(state!=='mini'||!MG.cur||!MG.ptr||e.pointerId!==MG.ptr.id)return;e.preventDefault();const q=MG.ptr;MG.ptr=null;if(MG.cur.up)MG.cur.up(q.x,q.y,q)}
+for(const el of [cv,$('pad')]){el.addEventListener('pointerdown',mgDown,{passive:false});el.addEventListener('pointermove',mgMove,{passive:false});el.addEventListener('pointerup',mgUp,{passive:false});el.addEventListener('pointercancel',mgUp,{passive:false})}
+addEventListener('keydown',e=>{if(state!=='mini')return;if(!MG.key[e.code])MG.keyP[e.code]=1;MG.key[e.code]=1;if(e.code==='Escape'||e.code==='Backspace'){e.preventDefault();miniExit()}});
+addEventListener('keyup',e=>{MG.key[e.code]=0});
+function mgPoll(){const was=MG.pad;const n={};let p=null;try{for(const q of navigator.getGamepads?navigator.getGamepads():[])if(q&&q.connected){p=q;break}}catch(e){}
+ if(p){const bt=i=>!!(p.buttons[i]&&p.buttons[i].pressed),ax=p.axes||[];n.L=bt(14)||ax[0]<-0.5;n.R=bt(15)||ax[0]>0.5;n.U=bt(12)||ax[1]<-0.5;n.D=bt(13)||ax[1]>0.5;n.A=bt(0);n.B=bt(1);n.X=bt(2);n.Y=bt(3);n.LB=bt(4);n.RB=bt(5);n.LT=bt(6);n.RT=bt(7);n.ST=bt(9);n.ax=ax[0]||0;n.ay=ax[1]||0}
+ const k=MG.key,kp=MG.keyP;n.L=n.L||k.ArrowLeft||k.KeyA;n.R=n.R||k.ArrowRight||k.KeyD;n.U=n.U||k.ArrowUp||k.KeyW;n.D=n.D||k.ArrowDown||k.KeyS;n.A=n.A||k.Space||k.KeyZ||k.Enter;n.X=n.X||k.KeyX||k.KeyJ;n.Y=n.Y||k.KeyC||k.KeyK;n.B=n.B||k.Delete;
+ MG.padP={};for(const q in n)if(n[q]&&!was[q])MG.padP[q]=1;MG.pad=n;MG.keyP={}}
+function mgLoop(now){requestAnimationFrame(mgLoop);if(state!=='mini'||!MG.cur)return;let dt=Math.min(0.05,(now-MG.last)/1000);MG.last=now;if(window.__FIXDT)dt=window.__FIXDT;
+ mgPoll();if(MG.padP.ST&&MG.cur.done)MG.cur.done();if(MG.padP.B&&MG.cur.id!=='tree')miniExit();if(!MG.cur)return;
+ for(let k=0;k<(window.__SPEED||1);k++)MG.cur.update(dt);c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,W,H);MG.cur.draw()}
+requestAnimationFrame(mgLoop);
+/* ---- drawing helpers (CSS px) ---- */
+function mgCover(n,ox=0.5,oy=0.5,alpha=1){const im=IMG[n];if(!im)return;const s=Math.max(W/im.width,H/im.height),w=im.width*s,h=im.height*s;c.globalAlpha=alpha;c.drawImage(im,(W-w)*ox,(H-h)*oy,w,h);c.globalAlpha=1}
+function mgImg(n,x,y,h,fl=false,rot=0,alpha=1,ay=1){const im=IMG[n];if(!im)return;const w=im.width*h/im.height;c.save();c.globalAlpha=alpha;c.translate(x,y);c.rotate(rot);if(fl)c.scale(-1,1);c.drawImage(im,-w/2,-h*ay,w,h);c.restore()}
+function mgW(n,h){const im=IMG[n];return im?im.width*h/im.height:h}
+function mgBubble(x,y,txt,col='#2a2a40'){if(!txt)return;c.font='17px "Baloo 2",sans-serif';const lines=mgWrap(txt,Math.min(260,W*0.62));const w=Math.max(...lines.map(l=>c.measureText(l).width))+22,h=lines.length*20+14;
+ let bx=clamp(x-w/2,8,W-w-8),by=y-h-12;if(by<62)by=62;c.fillStyle='rgba(255,255,255,.96)';c.strokeStyle='#2a2a40';c.lineWidth=2.5;rr(bx,by,w,h,12);c.fill();c.stroke();
+ c.beginPath();c.moveTo(clamp(x,bx+14,bx+w-14)-8,by+h-1);c.lineTo(clamp(x,bx+14,bx+w-14),by+h+10);c.lineTo(clamp(x,bx+14,bx+w-14)+8,by+h-1);c.fill();
+ c.fillStyle=col;c.textAlign='left';c.font='bold 17px "Baloo 2",sans-serif';lines.forEach((l,i)=>c.fillText(l,bx+11,by+22+i*20))}
+function mgWrap(t,maxw){const ws=t.split(' '),out=[];let cur='';for(const w of ws){const n=cur?cur+' '+w:w;if(c.measureText(n).width>maxw&&cur){out.push(cur);cur=w}else cur=n}if(cur)out.push(cur);return out}
+function mgBtn(x,y,w,h,label,col='#4ac84a',on=true){c.save();c.globalAlpha=on?1:0.45;c.fillStyle='rgba(0,0,0,.35)';rr(x,y+4,w,h,14);c.fill();const g=c.createLinearGradient(0,y,0,y+h);g.addColorStop(0,col);g.addColorStop(1,'rgba(0,0,0,.25)');c.fillStyle=col;rr(x,y,w,h,14);c.fill();c.fillStyle=g;rr(x,y,w,h,14);c.fill();c.strokeStyle='rgba(255,255,255,.75)';c.lineWidth=2.5;rr(x,y,w,h,14);c.stroke();otext(label,x+w/2,y+h/2+8,Math.min(20,h*0.45),'#fff','center');c.restore();return{x,y,w,h}}
+const inR=(p,r)=>r&&p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
+function mgParts(list,dt){for(const q of list){q.l-=dt;q.vy+=(q.g||0)*dt;q.x+=q.vx*dt;q.y+=q.vy*dt}return list.filter(q=>q.l>0)}
+function mgDrawParts(list){for(const q of list){c.globalAlpha=Math.max(0,Math.min(1,q.l/(q.m||1)));c.fillStyle=q.c;if(q.star){c.save();c.translate(q.x,q.y);c.rotate(q.l*4);c.beginPath();for(let i=0;i<10;i++){const r=i%2?q.s*0.45:q.s,a=i/10*TAU;c.lineTo(Math.cos(a)*r,Math.sin(a)*r)}c.fill();c.restore()}else{c.beginPath();c.arc(q.x,q.y,q.s,0,TAU);c.fill()}}c.globalAlpha=1}
+function mgBurst(list,x,y,n,cols,sp=220,star=false){for(let i=0;i<n;i++){const a=Math.random()*TAU,v=sp*(0.3+Math.random()*0.7);list.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-80,g:420,l:0.7+Math.random()*0.4,m:1,s:star?7:3+Math.random()*3,c:cols[i%cols.length],star})}}
+function mgFloat(list,x,y,txt,col='#fff'){list.push({x,y,txt,col,l:1.1})}
+function mgTexts(list,dt){for(const t of list){t.l-=dt;t.y-=50*dt}return list.filter(t=>t.l>0)}
+function mgDrawTexts(list){for(const t of list){c.globalAlpha=Math.min(1,t.l*1.5);otext(t.txt,t.x,t.y,24,t.col,'center')}c.globalAlpha=1}
+
+/* ===== Mini-game 1: HAIR SORTING. Noodles pops clumps out of the bin; swipe each to the bird who wants it. ===== */
+const SORT_N=20;
+const SORT_BIRDS={curly:{who:'hoodie',name:'Hoodie',want:'CURLY',dir:'L',ok:['Who-hoo! Curly!','Who? You! Nice!'],no:"Hoo? That's not curly!",fx:'coo'},
+ fluff:{who:'doves',name:'Adam & Eve',want:'FLUFF',dir:'D',ok:['So soft! Thank you!','Our eggs love it!'],no:'Too scratchy for our eggs!',fx:'coo'},
+ straight:{who:'katie',name:'Katie',want:'STRAIGHT',dir:'R',ok:['Caw! Shiny!','Caw-CHING!'],no:'Caw! I wanted straight!',fx:'caw'},
+ thing:{who:'book',name:'Found-It Book',want:'NOT HAIR',dir:'U',ok:['Into the Found-It Book!','A fine find, Boss.'],no:"That's hair! Hair is gold, Boss!",fx:'ching'}};
+const SORT_COL={curly:['#f2c14e','#8a4b24','#2a1d18','#c4532a'],straight:['#2a1d18','#7a4a2a','#f0d27a','#9a9a9a'],fluff:['#ffffff','#ffd6e6','#fff2d8']};
+const SORT={
+ init(){const r=rng((Math.random()*1e9)|0);const deck=[];for(let i=0;i<SORT_N-4;i++)deck.push(['curly','straight','fluff'][i%3]);deck.push('thing','thing','thing','bow');
+  for(let i=deck.length-1;i>0;i--){const j=(r()*(i+1))|0;[deck[i],deck[j]]=[deck[j],deck[i]]}
+  if(deck[0]==='thing'||deck[0]==='bow'){const k=deck.findIndex(d=>d==='curly');[deck[0],deck[k]]=[deck[k],deck[0]]}
+  this.deck=deck.map((k,i)=>({k:k==='bow'?'thing':k,bow:k==='bow',thing:k==='thing'?['cap','can','phone'][i%3]:null,col:k in SORT_COL?SORT_COL[k][(r()*SORT_COL[k].length)|0]:null,seed:r()*1000}));
+  this.i=0;this.cur=null;this.fly=[];this.parts=[];this.texts=[];this.t=0;this.ok=0;this.oops=0;this.streak=0;this.score=0;this.talk=[];this.react={};this.popT=0;this.end=0;this.give=0;
+  AU.music('w2');this.say('jt',"Here's the plan. Curly to Hoodie. Fluff to the doves. Straight to Katie!",3.2);this.next(0.9)},
+ say(who,t,d=1.8){this.talk=this.talk.filter(x=>x.who!==who);this.talk.push({who,t,d})},
+ next(delay=0.35){this.wait=delay},
+ spawn(){if(this.i>=this.deck.length){this.end=1.2;return}const d=this.deck[this.i++];const L=this.lay();this.cur={...d,x:L.bin.x,y:L.bin.y-30,vy:-520,st:'pop',t:0,ang:0};this.popT=0.5;AU.fx('pop');AU.fx('wiggle');
+  mgBurst(this.parts,L.bin.x,L.bin.y-40,10,['#e8c890','#fff','#c89a5a']);if(d.bow){this.say('nd','Ooh! This one has a name on it! MIA!',2.4)}else if(this.i===2)this.say('nd','Is it hair time? It is!',1.4)},
+ lay(){const top=56,bot=H-12,mid=W/2;const ny=bot-Math.min(110,H*0.13),nh=Math.min(120,H*0.14);const hold={x:mid,y:top+(ny-top)*0.52};
+  return{top,bot,hold,bin:{x:mid,y:top+Math.min(150,H*0.2)},nests:{curly:{x:W*0.18,y:ny},fluff:{x:mid,y:ny+6},straight:{x:W*0.82,y:ny},thing:{x:W-62,y:top+90}},nh}},
+ send(dir){const it=this.cur;if(!it||it.st!=='hold')return;const k=Object.keys(SORT_BIRDS).find(q=>SORT_BIRDS[q].dir===dir);if(!k)return;const L=this.lay(),n=L.nests[k];
+  it.st='fly';it.t=0;it.from={x:it.x,y:it.y};it.to={x:n.x,y:n.y-(k==='thing'?10:L.nh*0.55)};it.target=k;AU.fx('jump')},
+ land(it){const B=SORT_BIRDS[it.target],good=it.target===it.k;const L=this.lay(),n=L.nests[it.target];
+  if(good){this.ok++;this.streak++;const pts=100*(this.streak>=5?2:1);this.score+=pts;mgFloat(this.texts,n.x,n.y-L.nh-10,'+'+pts+(this.streak>=5?' x2':''),'#ffe060');AU.fx(B.fx);AU.fx('curl');
+   mgBurst(this.parts,n.x,n.y-L.nh*0.5,16,['#ffe060','#fff','#ffb020'],240,true);this.react[it.target]={t:0.7,good:1};
+   if(it.bow){this.give=1;this.say('jt','Mia\'s bow goes back to Mia. That\'s the rule.',2.4)}else this.say(B.who,B.ok[(Math.random()*B.ok.length)|0],1.4);
+   if(this.streak===5)this.say('nd','Five in a row! I love plans!',1.6);this.cur=null;this.next()}
+  else{this.oops++;this.streak=0;AU.fx('nope');this.react[it.target]={t:0.7,good:0};this.say(it.target==='thing'?'jt':B.who,B.no,1.6);it.st='back';it.t=0;it.from={x:it.x,y:it.y}}},
+ update(dt){this.t+=dt;const L=this.lay();this.popT=Math.max(0,this.popT-dt);for(const k in this.react)this.react[k].t-=dt;
+  for(const s of this.talk)s.d-=dt;this.talk=this.talk.filter(s=>s.d>0);this.parts=mgParts(this.parts,dt);this.texts=mgTexts(this.texts,dt);
+  if(this.end>0){this.end-=dt;if(this.end<=0)this.finish();return}
+  if(this.wait!=null){this.wait-=dt;if(this.wait<=0){this.wait=null;this.spawn()}}
+  const it=this.cur;if(it){it.t+=dt;
+   if(it.st==='pop'){it.vy+=1500*dt;it.y+=it.vy*dt;it.x+=(L.hold.x-it.x)*Math.min(1,dt*3);if(it.vy>0&&it.y>=L.hold.y){it.y=L.hold.y;it.st='hold';it.t=0}}
+   else if(it.st==='hold'){it.x+=(L.hold.x-it.x)*Math.min(1,dt*8);it.y=L.hold.y+Math.sin(this.t*3)*5}
+   else if(it.st==='fly'||it.st==='back'){const d=it.st==='fly'?0.38:0.45,f=Math.min(1,it.t/d),to=it.st==='fly'?it.to:{x:L.hold.x,y:L.hold.y};
+    it.x=lerp(it.from.x,to.x,f);it.y=lerp(it.from.y,to.y,f)-Math.sin(f*Math.PI)*70;it.ang+=dt*8;if(f>=1){if(it.st==='fly')this.land(it);else{it.st='hold';it.t=0}}}}
+  /* gamepad / keys */
+  const P=MG.padP;if(P.L)this.send('L');else if(P.R)this.send('R');else if(P.D||P.A)this.send('D');else if(P.U||P.Y)this.send('U')},
+ up(x,y,q){const dx=x-q.x0,dy=y-q.y0;if(Math.hypot(dx,dy)>34){this.send(Math.abs(dx)>Math.abs(dy)?(dx<0?'L':'R'):(dy<0?'U':'D'));return}
+  const L=this.lay();for(const k in L.nests){const n=L.nests[k];if(Math.abs(x-n.x)<70&&y>n.y-L.nh-20&&y<n.y+30){this.send(SORT_BIRDS[k].dir);return}}},
+ finish(){const stars=this.oops<=1?3:this.oops<=4?2:1;const b=MG.best.sort||(MG.best.sort={});if(this.score>(b.score||0))b.score=this.score;
+  miniResult('sort',stars,[`Sorted ${this.ok} clumps! Oops: ${this.oops}. Score: ${this.score}`,this.give?'Mia got her bow back. Best pay yet!':'',stars===3?'Hoodie: "Who-hoo! Best sorting on the block!"':'J.T.: "Not bad, Noodles. Not bad at all."'].filter(Boolean))},
+ drawClump(it,x,y,s){const r=rng(it.seed|0);c.save();c.translate(x,y);c.rotate(Math.sin(it.ang)*0.15);c.scale(s,s);c.lineCap='round';
+  if(it.k==='curly'){for(let j=0;j<8;j++){const cx=(r()-0.5)*56,cy=(r()-0.5)*40;c.strokeStyle='rgba(0,0,0,.45)';c.lineWidth=6;this.spiral(cx,cy,16,r()*TAU);c.strokeStyle=it.col;c.lineWidth=3.5;this.spiral(cx,cy,16,r()*TAU)}
+   c.strokeStyle='rgba(255,255,255,.35)';c.lineWidth=1.5;this.spiral(-6,-6,10,1)}
+  else if(it.k==='straight'){for(let j=0;j<16;j++){const yy=(j-8)*3.2,bend=(r()-0.5)*10;c.strokeStyle='rgba(0,0,0,.45)';c.lineWidth=4.5;c.beginPath();c.moveTo(-42,yy+bend*0.3);c.quadraticCurveTo(0,yy+bend,42,yy-bend*0.3);c.stroke();
+    c.strokeStyle=it.col;c.lineWidth=2.6;c.beginPath();c.moveTo(-42,yy+bend*0.3);c.quadraticCurveTo(0,yy+bend,42,yy-bend*0.3);c.stroke()}
+   c.strokeStyle='rgba(255,255,255,.35)';c.lineWidth=1.2;c.beginPath();c.moveTo(-36,-12);c.lineTo(36,-14);c.stroke();c.fillStyle='#ff5a8a';c.strokeStyle='#5a1a2a';c.lineWidth=2;rr(-7,-30,14,60,6);c.fill();c.stroke()}
+  else if(it.k==='fluff'){for(let j=0;j<9;j++){const a=j/9*TAU,rr_=j===8?0:22;c.fillStyle='rgba(120,90,110,.35)';c.beginPath();c.arc(Math.cos(a)*rr_+1.5,Math.sin(a)*rr_*0.75+2,19,0,TAU);c.fill()}
+   for(let j=0;j<9;j++){const a=j/9*TAU,rr_=j===8?0:22;c.fillStyle=j%2?it.col:'#ffffff';c.beginPath();c.arc(Math.cos(a)*rr_,Math.sin(a)*rr_*0.75,18,0,TAU);c.fill()}
+   c.fillStyle='rgba(255,255,255,.8)';c.beginPath();c.arc(-10,-10,7,0,TAU);c.fill()}
+  else{if(it.bow){mgImg('bow',0,30,62);c.fillStyle='#fff';c.strokeStyle='#5a3a10';c.lineWidth=2;rr(-24,18,48,20,5);c.fill();c.stroke();otext('MIA',0,34,14,'#ff4d8d','center')}else mgImg(it.thing,0,30,it.thing==='phone'?70:58)}
+  c.restore()},
+ spiral(cx,cy,R,a0){c.beginPath();for(let k=0;k<=36;k++){const t=k/36,a=a0+t*TAU*2.2,r=R*(1-t*0.75);const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;k?c.lineTo(x,y):c.moveTo(x,y)}c.stroke()},
+ drawNest(k,n,nh){const B=SORT_BIRDS[k],re=this.react[k],hop=re&&re.t>0?(re.good?-Math.abs(Math.sin(re.t*14))*12:0):0,shake_=re&&re.t>0&&!re.good?Math.sin(re.t*40)*5:0;
+  if(k==='thing'){c.save();c.translate(n.x+shake_,n.y+hop);c.fillStyle='#8a2a1a';c.strokeStyle='#3a0a00';c.lineWidth=3;rr(-38,-50,76,56,8);c.fill();c.stroke();c.fillStyle='#fff4d8';rr(-32,-45,64,46,5);c.fill();
+   otext('FOUND',0,-26,13,'#a04a00','center');otext('IT!',0,-10,13,'#a04a00','center');c.restore();otext('↑ NOT HAIR',n.x,n.y+24,14,'#fff','center');return}
+  mgImg('bd_nest',n.x,n.y+8,nh*0.62);mgImg(B.who,n.x+shake_,n.y-nh*0.28+hop,nh*(k==='fluff'?0.95:1.05),k==='straight');
+  otext({L:'◀ ',D:'▼ ',R:''}[B.dir]+B.want+(B.dir==='R'?' ▶':''),n.x,n.y+28,17,'#fff','center')},
+ draw(){mgCover('bg2',0.45);c.fillStyle='rgba(16,20,42,.35)';c.fillRect(0,0,W,H);const L=this.lay();
+  const g=c.createLinearGradient(0,L.nests.curly.y-L.nh*1.3,0,H);g.addColorStop(0,'rgba(10,12,30,0)');g.addColorStop(1,'rgba(10,12,30,.75)');c.fillStyle=g;c.fillRect(0,L.nests.curly.y-L.nh*1.3,W,H);
+  /* bin + Noodles */
+  mgImg('binopen',L.bin.x,L.bin.y+40,Math.min(150,H*0.18));
+  if(this.popT>0)mgImg('nd_hair',L.bin.x+40,L.bin.y-60-Math.sin(this.popT/0.5*Math.PI)*30,64);else mgImg('nd_wink',L.bin.x+52,L.bin.y+36,58);
+  mgImg('jt_point',46,L.bin.y+40,Math.min(118,H*0.14));
+  for(const k in L.nests)this.drawNest(k,L.nests[k],L.nh);
+  /* progress */
+  otext((Math.min(this.i,SORT_N))+' / '+SORT_N,16,L.top+26,20,'#fff','left');otext('★ '+this.score,16,L.top+50,18,'#ffe060','left');
+  const it=this.cur;if(it){if(it.st==='hold'){c.fillStyle='rgba(255,255,255,.18)';c.beginPath();c.arc(it.x,it.y,64+Math.sin(this.t*4)*3,0,TAU);c.fill()}this.drawClump(it,it.x,it.y,it.st==='fly'?1-Math.min(1,it.t/0.38)*0.35:1.15)
+   if(it.st==='hold'&&this.i<=2){c.globalAlpha=0.6+Math.sin(this.t*5)*0.3;otext('SWIPE IT!',it.x,it.y+92,22,'#fff6a0','center');c.globalAlpha=1}}
+  mgDrawParts(this.parts);mgDrawTexts(this.texts);
+  const pos={jt:{x:46,y:L.bin.y-70},nd:{x:L.bin.x+52,y:L.bin.y-20},hoodie:{x:L.nests.curly.x,y:L.nests.curly.y-L.nh*1.3},doves:{x:L.nests.fluff.x,y:L.nests.fluff.y-L.nh*1.25},katie:{x:L.nests.straight.x,y:L.nests.straight.y-L.nh*1.35}};
+  for(const s of this.talk){const p=pos[s.who];if(p)mgBubble(p.x,p.y,s.t)}},
+ /* QA hook */
+ qa(){const it=this.cur;return{st:it&&it.st,k:it&&it.k,i:this.i,ok:this.ok,oops:this.oops,end:this.end}}};
+
+/* ===== Mini-game 2: HOME SWEET TREE. Decorate the hideout with found things; the birds come to the party. ===== */
+const TREE_ITEMS=[['dc_lights','Fairy lights',0.16],['dc_beanbag','Beanbag',0.24],['dc_chalk','Plan board',0.26],['dc_map','Map board',0.24],['dc_rug','Rug',0.2],['dc_disco','Disco ball',0.16],
+ ['dc_plant','Teacup plant',0.16],['dc_photo','Crew photo',0.2],['dc_lantern','Jar lantern',0.17],['dc_hammock','Sock hammock',0.24],['dc_caps','Cap tower',0.2],['dc_pillow','Pillow',0.17],
+ ['phone','Old phone',0.11],['watch','Toy watch',0.1],['panel','Solar panel',0.16],['feather','White feather',0.12],['bd_nest','Spare nest',0.14]];
+const TREE_KEY='jthm_tree';
+const TREE={
+ init(){let s=null;try{s=JSON.parse(localStorage.getItem(TREE_KEY)||'null')}catch(e){}
+  this.items=s&&Array.isArray(s.items)?s.items.filter(o=>TREE_ITEMS.some(t=>t[0]===o.k)):[];this.crew=s&&s.crew||{jt:{u:0.3,v:0.86},nd:{u:0.42,v:0.88}};
+  this.sel=-1;this.tray=0;this.scroll=0;this.drag=null;this.parts=[];this.texts=[];this.talk=[];this.party=0;this.birds=[];this.t=0;this.placed=0;
+  AU.music('title');this.say('jt','Home sweet tree. Let\'s make it fancy. Tap a thing below!',3);this.say('nd','Ooh! Can the disco ball go up high?',2.6,1.2);$('mgDone').hidden=false;this.refreshDone()},
+ say(who,t,d=2,delay=0){this.talk=this.talk.filter(x=>x.who!==who);this.talk.push({who,t,d,delay})},
+ refreshDone(){const b=$('mgDone');if(b){b.disabled=this.items.length<3;b.textContent=this.items.length<3?'DONE ('+this.items.length+'/3)':'PARTY!'}},
+ room(){const top=56,tray=W>H?Math.max(96,H*0.22):Math.min(150,Math.max(118,H*0.15));return{x:0,y:top,w:W,h:H-top-tray,tray:{y:H-tray,h:tray}}},
+ jtH(){const R=this.room();return R.h*(W>H?0.45:0.3)},ndH(){const R=this.room();return R.h*(W>H?0.24:0.16)},
+ toXY(o){const R=this.room();return{x:R.x+o.u*R.w,y:R.y+o.v*R.h}},
+ size(o){const R=this.room(),it=TREE_ITEMS.find(t=>t[0]===o.k);return Math.min(R.h,R.w*1.4)*it[2]*(o.s||1)},
+ save(){try{localStorage.setItem(TREE_KEY,JSON.stringify({items:this.items,crew:this.crew}))}catch(e){}},
+ add(k){if(this.items.length>=24){this.say('jt','Whoa. That\'s a lot of stuff, Boss. Er, me.',1.8);return}const R=this.room();
+  const o={k,u:0.5+(Math.random()-0.5)*0.2,v:k==='dc_rug'?0.9:k==='dc_lights'||k==='dc_disco'?0.2:0.55,s:1,f:0};this.items.push(o);this.sel=this.items.length-1;this.placed++;AU.fx('pop');
+  const p=this.toXY(o);mgBurst(this.parts,p.x,p.y-30,12,['#ffe060','#fff','#ff9ac8'],200,true);
+  const lines={dc_disco:['nd','Disco! I LOVE disco!'],dc_photo:['nd','That\'s us! I look so bendy.'],dc_chalk:['jt','Every mob needs a plan board.'],dc_hammock:['jt','A sock hammock. Classy.'],feather:['jt','The friend feather. Best trade ever.'],dc_caps:['nd','So many caps!']}[k];
+  if(lines)this.say(lines[0],lines[1],1.8);this.refreshDone();this.save()},
+ hit(x,y){for(let i=this.items.length-1;i>=0;i--){const o=this.items[i],p=this.toXY(o),h=this.size(o),w=mgW(o.k,h);if(Math.abs(x-p.x)<w/2+8&&y<p.y+8&&y>p.y-h-8)return i}return -1},
+ crewHit(x,y){for(const k of ['nd','jt']){const p=this.toXY(this.crew[k]),h=k==='jt'?this.jtH():this.ndH();if(Math.abs(x-p.x)<h*0.35&&y<p.y&&y>p.y-h)return k}return null},
+ tools(){const R=this.room(),y=R.tray.y-52,bw=Math.min(76,W/5-8),gap=6,n=4,x0=W/2-(n*bw+(n-1)*gap)/2;return['FLIP','BIG','SMALL','TOSS'].map((l,i)=>({l,x:x0+i*(bw+gap),y,w:bw,h:42}))},
+ trayRects(){const R=this.room(),s=R.tray.h-36,out=[];for(let i=0;i<TREE_ITEMS.length;i++)out.push({i,x:12+i*(s+10)-this.scroll,y:R.tray.y+8,w:s,h:s});return out},
+ tool(l){const o=this.items[this.sel];if(!o)return;AU.fx('menu');if(l==='FLIP')o.f=o.f?0:1;else if(l==='BIG')o.s=Math.min(1.8,(o.s||1)+0.15);else if(l==='SMALL')o.s=Math.max(0.5,(o.s||1)-0.15);
+  else if(l==='TOSS'){const p=this.toXY(o);mgBurst(this.parts,p.x,p.y-20,10,['#c8a070','#fff']);this.items.splice(this.sel,1);this.sel=-1;AU.fx('poof');this.refreshDone()}this.save()},
+ down(x,y){if(this.party)return;const p={x,y};
+  if(this.sel>=0)for(const b of this.tools())if(inR(p,b)){this.tool(b.l);this.drag={kind:'none'};return}
+  const R=this.room();if(y>=R.tray.y){this.drag={kind:'tray',sx:this.scroll,x0:x};return}
+  const ck=this.crewHit(x,y),i=this.hit(x,y);
+  if(i>=0&&(!ck||i>=0&&this.items[i].k!=='dc_rug')){const o=this.items[i];this.items.splice(i,1);this.items.push(o);this.sel=this.items.length-1;const q=this.toXY(o);this.drag={kind:'item',dx:q.x-x,dy:q.y-y};AU.fx('wiggle');return}
+  if(ck){const q=this.toXY(this.crew[ck]);this.drag={kind:'crew',k:ck,dx:q.x-x,dy:q.y-y};if(ck==='nd'){AU.fx('giggle');this.say('nd','Wheee!',0.9)}return}
+  this.sel=-1;this.drag={kind:'none'}},
+ move(x,y){const d=this.drag;if(!d)return;const R=this.room();
+  if(d.kind==='tray'){const max=Math.max(0,TREE_ITEMS.length*(R.tray.h-26)+14-W);this.scroll=clamp(d.sx-(x-d.x0),0,max)}
+  else if(d.kind==='item'){const o=this.items[this.sel];if(!o)return;o.u=clamp((x+d.dx-R.x)/R.w,0.04,0.96);o.v=clamp((y+d.dy-R.y)/R.h,0.08,1)}
+  else if(d.kind==='crew'){const o=this.crew[d.k];o.u=clamp((x+d.dx-R.x)/R.w,0.06,0.94);o.v=clamp((y+d.dy-R.y)/R.h,0.3,1)}},
+ up(x,y,q){const d=this.drag;this.drag=null;if(!d)return;
+  if(d.kind==='tray'&&!q.moved){for(const r of this.trayRects())if(inR({x,y},r)){this.tray=r.i;this.add(TREE_ITEMS[r.i][0]);return}}
+  if(d.kind==='item'||d.kind==='crew'){AU.fx('land');this.save()}},
+ done(){if(this.party||this.items.length<3){if(!this.party){AU.fx('nope');this.say('jt','Put out at least 3 things first!',1.6)}return}
+  this.party=0.01;this.sel=-1;$('mgDone').hidden=true;AU.music('win');AU.fx('ching');this.save();
+  const R=this.room();const who=['katie','patty','steve','hoodie','doves','parrot'];this.birds=who.map((k,i)=>({k,x:i%2?W+80:-80,y:R.y+40+i*28,tx:R.x+R.w*(0.12+i*0.15),ty:R.y+R.h*(0.32+(i%3)*0.08),t:-i*0.25}));
+  this.say('jt','Home sweet tree! Party time!',2.4);this.say('nd','Ooh! I love it! Which noodle gets the beanbag?',2.6,2.5)},
+ update(dt){this.t+=dt;for(const s of this.talk){if(s.delay>0)s.delay-=dt;else s.d-=dt}this.talk=this.talk.filter(s=>s.d>0);this.parts=mgParts(this.parts,dt);this.texts=mgTexts(this.texts,dt);
+  if(this.party){this.party+=dt;for(const b of this.birds){b.t+=dt;if(b.t>0){b.x+=(b.tx-b.x)*Math.min(1,dt*2.2);b.y+=(b.ty-b.y)*Math.min(1,dt*2.2)}}
+   if(Math.random()<0.5)this.parts.push({x:Math.random()*W,y:-10,vx:(Math.random()-0.5)*60,vy:120+Math.random()*80,g:0,l:3,m:3,s:4,c:['#ff5f9e','#ffd23a','#5fd0ff','#7aff7a','#fff'][(Math.random()*5)|0]});
+   if(this.party>5.5){this.party=0;miniResult('tree',3,['Home sweet tree!','Everyone came to the party.','Noodles: "What\'s the plan tomorrow, Boss?"'],'KEEP DECORATING')}return}
+  /* gamepad / keys */
+  const P=MG.padP,Pd=MG.pad;if(P.RB||P.R&&this.sel<0){this.tray=(this.tray+1)%TREE_ITEMS.length;this.ensureTray()}if(P.LB||P.L&&this.sel<0){this.tray=(this.tray+TREE_ITEMS.length-1)%TREE_ITEMS.length;this.ensureTray()}
+  if(P.A)this.add(TREE_ITEMS[this.tray][0]);if(P.Y&&this.items.length){this.sel=(this.sel+1)%this.items.length}
+  if(this.sel>=0){const o=this.items[this.sel];const sp=0.45*dt;if(Pd.L)o.u=clamp(o.u-sp,0.04,0.96);if(Pd.R)o.u=clamp(o.u+sp,0.04,0.96);if(Pd.U)o.v=clamp(o.v-sp,0.08,1);if(Pd.D)o.v=clamp(o.v+sp,0.08,1);
+   if(P.X)this.tool('FLIP');if(P.RT)this.tool('BIG');if(P.LT)this.tool('SMALL');if(P.B)this.tool('TOSS');if((P.L||P.R||P.U||P.D))this.saveT=0.6}else if(P.B)miniExit();
+  if(this.saveT>0){this.saveT-=dt;if(this.saveT<=0)this.save()}},
+ ensureTray(){const R=this.room(),s=R.tray.h-36+10,x=12+this.tray*s;if(x-this.scroll>W-s)this.scroll=x-W+s+12;if(x-this.scroll<0)this.scroll=x-12;AU.fx('menu')},
+ draw(){const R=this.room();mgCover('mg_tree_bg',0.35,0.5);
+  const order=this.items.map((o,i)=>({o,i})).sort((a,b)=>(a.o.k==='dc_rug'?-1:0)-(b.o.k==='dc_rug'?-1:0));
+  for(const {o} of order.filter(e=>e.o.k==='dc_rug'))this.drawItem(o,this.items.indexOf(o));
+  /* crew stands among the stuff */
+  const jt=this.toXY(this.crew.jt),nd=this.toXY(this.crew.nd);const br=Math.sin(this.t*3);
+  c.save();c.translate(jt.x,jt.y);c.scale(1-br*0.008,1+br*0.012);mgImg(this.party?'jt_point':'jt_idle',0,0,this.jtH());c.restore();
+  mgImg(this.party?'nd_laugh':'nd_wink',nd.x,nd.y+(this.party?-Math.abs(Math.sin(this.t*6))*10:0),this.party?this.ndH()*0.75:this.ndH(),this.party&&Math.sin(this.t*2)>0);
+  for(const {o,i} of order.filter(e=>e.o.k!=='dc_rug'))this.drawItem(o,i);
+  for(const b of this.birds){if(b.t<=0)continue;mgImg(b.k,b.x,b.y+Math.sin(this.t*5+b.tx)*4,R.h*(b.k==='doves'?0.14:0.13),b.tx>W/2)}
+  if(this.party){c.globalAlpha=Math.min(1,this.party);otext('PARTY AT THE TREE!',W/2,R.y+46,30,'#ffd23a','center');c.globalAlpha=1}
+  /* tools + tray */
+  if(!this.party){if(this.sel>=0)for(const b of this.tools())mgBtn(b.x,b.y,b.w,b.h,b.l,b.l==='TOSS'?'#d04a3a':'#4a7ad0');
+   const g=c.createLinearGradient(0,R.tray.y,0,H);g.addColorStop(0,'#5a3418');g.addColorStop(1,'#2a1608');c.fillStyle=g;c.fillRect(0,R.tray.y,W,H-R.tray.y);c.fillStyle='#ffd23a';c.fillRect(0,R.tray.y,W,3);
+   for(const r of this.trayRects()){if(r.x>W||r.x+r.w<0)continue;c.fillStyle=r.i===this.tray&&GP.on?'rgba(255,240,120,.45)':'rgba(255,255,255,.12)';rr(r.x,r.y,r.w,r.h,12);c.fill();
+    const k=TREE_ITEMS[r.i][0],im=IMG[k];if(im){const s=Math.min((r.w-14)/im.width,(r.h-14)/im.height);c.drawImage(im,r.x+r.w/2-im.width*s/2,r.y+r.h/2-im.height*s/2,im.width*s,im.height*s)}}
+   otext(GP.on?'LB/RB pick · A add · Y select · stick move · X flip · LT/RT size · B toss':'Tap a thing to add it · drag to move · swipe here for more',W/2,H-8,12,'#ffe8c0','center')}
+  mgDrawParts(this.parts);
+  const pos={jt:{x:jt.x,y:jt.y-this.jtH()},nd:{x:nd.x,y:nd.y-this.ndH()}};for(const s of this.talk){if(s.delay>0)continue;const p=pos[s.who];if(p)mgBubble(p.x,p.y,s.t)}},
+ drawItem(o,i){const p=this.toXY(o),h=this.size(o),w=mgW(o.k,h);
+  if(o.k==='dc_lights'||o.k==='dc_lantern'){c.globalAlpha=0.25+Math.sin(this.t*3+i)*0.08;const g=c.createRadialGradient(p.x,p.y-h/2,4,p.x,p.y-h/2,w*0.8);g.addColorStop(0,'#ffe9a0');g.addColorStop(1,'rgba(255,220,120,0)');c.fillStyle=g;c.fillRect(p.x-w,p.y-h*1.5,w*2,h*2);c.globalAlpha=1}
+  if(o.k==='dc_disco'){c.strokeStyle='#ccc';c.lineWidth=2;c.beginPath();c.moveTo(p.x,p.y-h);c.lineTo(p.x,this.room().y);c.stroke()}
+  mgImg(o.k,p.x,p.y,h,!!o.f,o.k==='dc_disco'?Math.sin(this.t)*0.05:0);
+  if(o.k==='dc_disco'&&Math.random()<0.3)this.parts.push({x:p.x+(Math.random()-0.5)*w,y:p.y-h/2+(Math.random()-0.5)*h,vx:(Math.random()-0.5)*200,vy:(Math.random()-0.5)*200,g:0,l:0.5,m:0.5,s:2.5,c:'#fff',star:1});
+  if(i===this.sel&&!this.party){c.strokeStyle='#ffe060';c.setLineDash([8,6]);c.lineWidth=3;rr(p.x-w/2-6,p.y-h-6,w+12,h+12,10);c.stroke();c.setLineDash([])}},
+ exit(){this.save()},
+ qa(){return{n:this.items.length,sel:this.sel,party:this.party,tray:this.trayRects().filter(r=>r.x>=0&&r.x+r.w<=W).map(r=>[r.x+r.w/2,r.y+r.h/2,r.i]),items:this.items.map(o=>{const p=this.toXY(o);return[o.k,Math.round(p.x),Math.round(p.y-this.size(o)/2)]})}}};
+
+/* ===== Mini-game 3: FIRST FLIGHT. Adam and Eve's babies learn to fly. Tap to flap. Nobody can fall: Mom and Dad always catch them. ===== */
+const FLY_STAGES=[{len:1700,wind:0,clouds:0,line:'First flight! Tap to flap your little wings.'},{len:2500,wind:1,clouds:0,line:'Ride the warm wind up! Grab the golden hair.'},{len:3100,wind:1,clouds:1,line:'All the way home to the tree. Everyone is watching!'}];
+const FLY={VH:600,GROUND:548,
+ init(){this.si=0;this.total={hair:0,rescues:0};this.parts=[];this.texts=[];this.start(0);AU.music('w3')},
+ start(i){const S=FLY_STAGES[i];this.si=i;this.S=S;this.b={x:120,y:330,vy:0,wing:0,flapT:0,face:'bd_happy',faceT:0,perch:1,tilt:0};this.cam=0;this.t=0;this.go=false;this.won=0;this.rescue=null;this.hair=0;this.rescues=0;this.talk=[];
+  const r=rng(101+i*17);this.curls=[];for(let x=420;x<S.len-300;x+=260+r()*140){const y0=170+r()*260,n=3+((r()*3)|0),wav=r()<0.5;for(let k=0;k<n;k++)this.curls.push({x:x+k*42,y:y0+(wav?Math.sin(k*0.9)*40:-k*14),got:0})}
+  this.winds=[];if(S.wind)for(let x=700;x<S.len-400;x+=700+r()*300)this.winds.push({x,w:200,dir:r()<0.6?-1:1});
+  this.cloudz=[];if(S.clouds)for(let x=900;x<S.len-300;x+=600+r()*300)this.cloudz.push({x,y:120+r()*250,r:60,hit:0});
+  this.steve=i===1?{x:1200,done:0}:null;
+  this.say('eve',S.line,3);if(i===0)this.say('adam','We will catch you. Always.',2.4,1.6)},
+ say(who,t,d=2,delay=0){this.talk=this.talk.filter(x=>x.who!==who);this.talk.push({who,t,d,delay})},
+ scale(){return Math.min(H/this.VH,W/380)},
+ oy(){return (H-this.VH*this.scale())*0.55},
+ camT(){const b=this.b,vw=this.viewW(),k=clamp((b.x-(this.S.len-520))/420,0,1);return b.x-vw*(0.3+0.32*k)},
+ flap(){const b=this.b;if(this.won||this.rescue)return;if(!this.go){this.go=true;b.perch=0;AU.fx('jump')}b.vy=-330;b.flapT=0.28;b.face='bd_try';b.faceT=0.3;AU.fx('wiggle');for(let k=0;k<3;k++)this.parts.push({x:b.x-14,y:b.y+6,vx:-40-Math.random()*40,vy:30+Math.random()*30,g:60,l:0.6,m:0.6,s:3,c:'#ffffff'})},
+ down(){this.flap()},
+ update(dt){this.t+=dt;const b=this.b,S=this.S;for(const s of this.talk){if(s.delay>0)s.delay-=dt;else s.d-=dt}this.talk=this.talk.filter(s=>s.d>0);this.parts=mgParts(this.parts,dt);this.texts=mgTexts(this.texts,dt);
+  if(MG.padP.A||MG.padP.X||MG.padP.U)this.flap();
+  b.flapT=Math.max(0,b.flapT-dt);b.faceT-=dt;if(b.faceT<=0)b.face='bd_happy';
+  if(this.won){this.won+=dt;const px=S.len+60,py=this.VH*0.5;b.x+=(px-b.x)*Math.min(1,dt*3);b.y+=(py-b.y)*Math.min(1,dt*3);b.tilt*=0.9;if(this.won>3.2)this.nextStage();this.cam+=(b.x-this.viewW()*(this.si===2?0.2:0.35)-this.cam)*Math.min(1,dt*3);return}
+  if(!this.go){b.y=330+Math.sin(this.t*2)*2;return}
+  if(this.rescue){const R=this.rescue;R.t+=dt;b.x+=60*dt;if(R.t<0.6){R.y+=(b.y-50-R.y)*Math.min(1,dt*8)}else{b.y+=(300-b.y)*Math.min(1,dt*3);R.y=b.y-50}if(R.t>1.6){this.rescue=null;b.vy=-120}this.cam+=(b.x-this.viewW()*0.3-this.cam)*Math.min(1,dt*4);return}
+  b.x+=150*dt;b.vy=Math.min(b.vy+880*dt,300);
+  for(const w of this.winds)if(Math.abs(b.x-w.x)<w.w/2)b.vy+=w.dir*900*dt;
+  b.y+=b.vy*dt;b.tilt=clamp(b.vy/900,-0.35,0.4);if(b.y<40){b.y=40;b.vy=40}
+  if(b.y>this.GROUND-10){this.rescues++;this.total.rescues++;this.rescue={t:0,y:b.y-260};AU.fx('coo');b.face='bd_giggle';b.faceT=1.5;this.say('adam',['Up you go, little one!','Gotcha! Try again!','Flap, flap, flap!'][this.rescues%3],1.6)}
+  for(const q of this.curls)if(!q.got&&Math.abs(q.x-b.x)<30&&Math.abs(q.y-b.y)<30){q.got=1;this.hair++;this.total.hair++;AU.fx('curl');b.face='bd_giggle';b.faceT=0.5;mgBurst(this.parts,q.x-this.cam*0+0,q.y,6,['#ffe080','#ffb020'],140)}
+  for(const cl of this.cloudz)if(!cl.hit&&Math.hypot(cl.x-b.x,cl.y-b.y)<cl.r){cl.hit=1;b.vy=120;AU.fx('poof');this.say('baby','Ah-choo!',1)}
+  if(this.steve&&!this.steve.done&&b.x>this.steve.x-200){this.steve.done=1;this.steve.fx=b.x+this.viewW();this.say('steve','Oops. I dropped it again.',1.8);for(let k=0;k<4;k++)this.curls.push({x:b.x+260+k*36,y:120+k*30,got:0})}
+  if(this.steve&&this.steve.fx)this.steve.fx-=260*dt;
+  if(b.x>=S.len){this.won=0.01;AU.fx('clear');AU.fx('coo');this.say('eve',this.si<2?'You did it! Rest on the branch.':'Home! You can fly!',2.4);if(this.si===2){this.say('jt','Hip, hip, hooray!',2.4,0.6);this.say('nd','Ooh! Teach ME to fly!',2.2,1.6)}}
+  this.cam+=(this.camT()-this.cam)*Math.min(1,dt*4)},
+ viewW(){return W/this.scale()},
+ nextStage(){if(this.si<2){this.start(this.si+1);AU.fx('menu')}else{const stars=this.total.rescues<=1?3:this.total.rescues<=4?2:1;const b=MG.best.fly||(MG.best.fly={});if(this.total.hair>(b.hair||0))b.hair=this.total.hair;
+  miniResult('fly',stars,["Adam and Eve's babies can fly!",`Golden hair: ${this.total.hair}. Catches by Mom and Dad: ${this.total.rescues}.`,'Adam and Eve: "Thank you, Jimothy Timothy."'])}},
+ draw(){const s=this.scale(),S=this.S,b=this.b;const im=IMG.mg_sky_bg;
+  if(im){const h=H,w=im.width*h/im.height,ox=-((this.cam*s*0.3)%w);for(let x=ox;x<W;x+=w)c.drawImage(im,x,0,w,h)}
+  c.save();c.translate(0,this.oy());c.scale(s,s);c.translate(-this.cam,0);const vw=this.viewW();
+  /* start + end branches */
+  mgImg('bd_branch',60,370,120,true);mgImg('bd_nest',95,350,48);
+  mgImg('bd_branch',S.len+110,this.VH*0.5+50,150);
+  mgImg('doves',S.len+150,this.VH*0.5+22,80,true);
+  if(this.si===2){const hop=this.won?Math.abs(Math.sin(this.t*6))*8:0;mgImg('jt_point',S.len+250,this.VH*0.5+40-hop,150,true);mgImg('nd_wink',S.len+190,this.VH*0.5+40-hop*1.5,70,true)}
+  /* wind */
+  for(const w of this.winds){if(w.x<this.cam-200||w.x>this.cam+vw+200)continue;c.globalAlpha=0.35;c.fillStyle=w.dir<0?'#fff6c0':'#c0d8ff';rr(w.x-w.w/2,30,w.w,this.GROUND-40,30);c.fill();c.globalAlpha=0.9;
+   for(let k=0;k<6;k++){const yy=((this.t*90*(-w.dir)+k*90)%(this.GROUND-40)+this.GROUND-40)%(this.GROUND-40)+30;otext(w.dir<0?'⇧':'⇩',w.x+((k%3)-1)*50,yy,28,'#fff','center')}c.globalAlpha=1}
+  for(const cl of this.cloudz){c.fillStyle=cl.hit?'rgba(200,200,220,.6)':'rgba(140,150,180,.9)';for(let k=0;k<5;k++){c.beginPath();c.arc(cl.x+(k-2)*26,cl.y+Math.sin(k)*8,30,0,TAU);c.fill()}}
+  for(const q of this.curls)if(!q.got)mgImg('curl',q.x,q.y+14+Math.sin(this.t*3+q.x)*3,30);
+  if(this.steve&&this.steve.fx)mgImg('steve',this.steve.fx,100,64,false);
+  /* parent rescue */
+  if(this.rescue){mgImg('doves',b.x+10,this.rescue.y+40,80)}
+  /* the baby: body + flapping wing (shoulder pivot), smooth stroke per tap, glide pose otherwise */
+  c.save();c.translate(b.x,b.y);c.rotate(b.tilt);const f=b.flapT>0?b.flapT/0.28:0,wa=b.perch?0.4:(f>0?-1.1+Math.sin((1-f)*Math.PI)*1.9:-0.35+Math.sin(this.t*2)*0.06);
+  mgImg(b.face,0,26,58);c.save();c.translate(-4,2);c.rotate(wa);mgImg('bd_wing',16,10,30,false,0,1,0.6);c.restore();c.restore();
+  c.restore();
+  mgDrawParts(this.parts);
+  /* HUD */
+  const prog=clamp(b.x/S.len,0,1);c.fillStyle='rgba(0,0,0,.35)';rr(16,66,W-32,14,7);c.fill();c.fillStyle='#ffd23a';rr(16,66,(W-32)*prog,14,7);c.fill();mgImg('bd_happy',16+(W-32)*prog,84,26);
+  otext('Flight '+(this.si+1)+' of 3',16,110,18,'#fff','left');otext('✦ '+this.hair,W-16,110,18,'#ffe060','right');
+  if(!this.go){c.globalAlpha=0.6+Math.sin(this.t*5)*0.3;otext('TAP TO FLAP!',W/2,H*0.7,30,'#fff6a0','center');c.globalAlpha=1}
+  const sp={eve:{x:W*0.62,y:H*0.17},adam:{x:W*0.3,y:H*0.32},baby:{x:(b.x-this.cam)*s,y:(b.y-40)*s+this.oy()},steve:{x:W*0.6,y:150},jt:{x:W*0.72,y:H*0.24},nd:{x:W*0.4,y:H*0.3}};
+  for(const t of this.talk){if(t.delay>0)continue;const p=sp[t.who];if(p)mgBubble(p.x,p.y,t.t)}},
+ qa(){const b=this.b;return{si:this.si,x:Math.round(b.x),y:Math.round(b.y),vy:Math.round(b.vy),go:this.go,won:this.won,len:this.S.len,rescue:!!this.rescue,hair:this.total.hair,res:this.total.rescues,wind:this.winds.map(w=>[w.x,w.dir])}}};
+
