@@ -704,6 +704,16 @@ function drawNoodles(n){if(!n)return;let name='nd_wink',x=n.x,y=n.y,rot=0,fl=n.f
  else if(n.st==='laugh'){name='nd_laugh';rot=Math.sin(G.t*8)*0.06}
  shadow(x,y,14);if(name==='rig'){if(n._lx===undefined)n._lx=x;const v=Math.abs(x-n._lx)/Math.max(1/120,G.dtR||1/60);n._lx=x;c.save();c.translate(x,y+2);c.rotate(rot);drawNdRig(n,0,0,fl,Math.max(v,n.st!=='follow'?300:0));c.restore()}else{n._lx=x;c.save();c.translate(x,y+2+bob);c.rotate(rot);spr(name,0,0,sc,fl);c.restore()}
  if(n.st==='dive'&&n.stuck){otext('TAP ACTION!',n.x,n.y-62,14,'#fff6a0','center');}}
+/* cutout leg rig for single-pose art (render-only): each leg region below the hip line swings about its hip,
+   stride phase from distance walked, legs ease back to standing when stopped. parts=[x0,y0,x1,y1,hipX,hipY,phaseOff,gain,lift] in image px */
+function cutGait(o,x,L,cap){const n=performance.now(),dt=Math.min(.1,(n-(o._gt||n))/1000);o._gt=n;const dx=o._gx===undefined?0:Math.min(40,Math.abs(x-o._gx));o._gx=x;const mv=dx>0.05;
+ o._gp=(o._gp||0)+Math.min(dx/L,(cap||40)*Math.max(dt,1/120));o._ga=(o._ga||0)+((mv?1:0)-(o._ga||0))*Math.min(1,dt*10);if(!mv&&o._ga<.03){o._ga=0;o._gp=Math.round(o._gp/Math.PI)*Math.PI}return[o._gp,o._ga]}
+function cutSpr(n,x,y,sc,flip,parts,ph,amp){const im=IMG[n];if(!im)return;if(!(amp>0.001)){spr(n,x,y,sc,flip);return}const W=im.width,H=im.height,k=.5*sc;c.save();c.translate(x,y);if(flip)c.scale(-1,1);c.scale(k,k);c.translate(-W/2,-H);
+ c.save();c.beginPath();c.rect(0,0,W,H);for(const q of parts)c.rect(q[0],q[1]+2,q[2]-q[0],q[3]-q[1]-2);c.clip('evenodd');c.drawImage(im,0,0);c.restore();
+ for(const q of parts){const a=Math.sin(ph+q[6])*amp*q[7],lf=Math.max(0,Math.cos(ph+q[6]))*amp*q[8];c.save();c.translate(q[4],q[5]-lf);c.rotate(a);c.translate(-q[4],-q[5]);c.beginPath();c.rect(q[0],q[1],q[2]-q[0],q[3]-q[1]+2);c.clip();c.drawImage(im,0,0);c.restore()}
+ c.restore()}
+const MO_LEGS=[[48,140,80,171,62,140,0,.38,5],[90,140,132,171,110,140,Math.PI,.38,5]];
+const POODLE_LEGS=[[0,96,42,131,22,96,0,.45,4],[42,96,80,131,60,96,Math.PI,.45,4],[80,96,118,131,98,96,Math.PI/2,.45,4],[118,96,160,131,135,96,Math.PI*1.5,.45,4]];
 function drawBin(e){if(e.st==='gone'||e.st==='lifted')return;let wob=0;if(e.st==='busy'&&G.nd&&G.nd.st==='dive'&&G.nd.task&&G.nd.task.bin===e)wob=Math.sin(G.t*25)*0.05;
  c.save();c.translate(e.x,e.y+2);c.rotate(wob);spr(e.st==='ready'?'binopen':'bin',0,0,1);c.restore();
  if(e.st==='ready'&&Math.sin(G.t*4+e.x)>0.6){c.fillStyle='rgba(255,240,160,.9)';c.beginPath();c.arc(e.x+rand(-14,14),e.y-62+rand(-6,6),2.5,0,TAU);c.fill()}
@@ -721,7 +731,7 @@ function drawEnt(e){if(e.dead)return;const t=G.t;switch(e.k){
  case 'treat':{c.fillStyle='#d04a3a';c.beginPath();c.ellipse(e.x,e.y+10,18,6,0,0,TAU);c.fill();spr('fish',e.x,e.y+6,0.8);if(!e.home)otext('MO',e.x,e.y+22,11,'#fff','center');break}
  case 'spr':spr('sprinkler',e.x,e.y+2,0.8);if(e.on){c.fillStyle='rgba(150,210,255,.35)';c.beginPath();c.moveTo(e.x-6,e.y-20);c.lineTo(e.x-26,e.y-120);c.lineTo(e.x+26,e.y-120);c.lineTo(e.x+6,e.y-20);c.fill()}break;
  case 'cloud':c.globalAlpha=0.55;c.fillStyle='#ffb0d4';for(let i=0;i<7;i++){const a=i/7*TAU+t*0.6;c.beginPath();c.arc(e.x+Math.cos(a)*e.r*0.55,e.y+Math.sin(a)*e.r*0.35,e.r*0.5,0,TAU);c.fill()}c.globalAlpha=1;break;
- case 'cat':{const fl=(e.face||-1)>0;if(e.st==='nap'){spr('mo_purr',e.x,e.y+2,0.42,false);otext('z',e.x+18,e.y-50-Math.sin(t*2)*4,12,'#fff','center')}else spr(e.st==='grump'?'mo_tough':'mo_pounce',e.x,e.y+2,0.42,fl);break}
+ case 'cat':{const fl=(e.face||-1)>0;if(e.st==='nap'){spr('mo_purr',e.x,e.y+2,0.42,false);otext('z',e.x+18,e.y-50-Math.sin(t*2)*4,12,'#fff','center')}else if(e.st==='grump'||e.st==='chase'){const g=cutGait(e,e.x,2.2);cutSpr('mo_tough',e.x,e.y+2,0.42,fl,MO_LEGS,g[0],g[1])}else{e._ga=0;e._gx=e.x;spr('mo_pounce',e.x,e.y+2,0.42,fl)}break}
  case 'door':{c.fillStyle='#4a2a1a';rr(e.x-26,e.y-110,52,110,6);c.fill();c.fillStyle='#e04040';c.fillRect(e.x+30,e.y-104,10,70);c.fillStyle='#fff';for(let i=0;i<4;i++)c.fillRect(e.x+30,e.y-98+i*16+((t*20)%16),10,5);
   spr(e.sweep>0?'sal_sweep':'sal_search',e.x-6,e.y+2,0.42,true);break}
  case 'patty':spr('patty',e.x,e.y+2,0.62,!e.on);if(e.on){c.fillStyle='#ffe060';c.beginPath();c.arc(e.x+18,e.y-70,4,0,TAU);c.fill()}break;
@@ -742,9 +752,9 @@ function drawBoss(b){if(!b)return;const t=G.t;
  else if(b.k==='poodles'){spr('puff',b.puffX,GY+2,0.52,false);if(b.sprayAnim>0){c.fillStyle='rgba(255,170,210,.6)';c.beginPath();c.arc(b.puffX+50+(0.5-b.sprayAnim)*80,GY-80,12,0,TAU);c.fill()}
   for(const cl of b.clouds){c.globalAlpha=Math.min(0.6,cl.life);c.fillStyle='#ffa8d0';for(let i=0;i<8;i++){const a=i/8*TAU+t*0.5;c.beginPath();c.arc(cl.x+Math.cos(a)*cl.r*0.55,cl.y+Math.sin(a)*cl.r*0.45,cl.r*0.52,0,TAU);c.fill()}c.globalAlpha=1}
   for(const d of b.dogs){shadow(d.x,GY,30);if(d.st==='fluff'){spr('poodles',d.x,GY+2,0.62,d.face<0);c.fillStyle='rgba(255,250,252,.95)';for(let i=0;i<9;i++){const a=i/9*TAU;c.beginPath();c.arc(d.x+Math.cos(a)*34,GY-44+Math.sin(a)*30,20+Math.sin(t*6+i)*2,0,TAU);c.fill()}c.fillStyle='#222';c.beginPath();c.arc(d.x-8,GY-48,3,0,TAU);c.arc(d.x+8,GY-48,3,0,TAU);c.fill()}
-   else{c.save();c.translate(d.x,GY+2+(d.st==='dash'?-Math.abs(Math.sin((d.anim||0)*18))*6:0));c.rotate(d.st==='dash'?Math.sin((d.anim||0)*18)*0.06:0);spr('poodles',0,0,0.62,d.face<0);c.restore()}}}
+   else{const pg=cutGait(d,d.x,4.2,24),pb=pg[1];c.save();c.translate(d.x,GY+2-Math.abs(Math.sin(pg[0]))*6*pb);c.rotate(Math.sin(pg[0])*0.06*pb);cutSpr('poodles',0,0,0.62,d.face<0,POODLE_LEGS,pg[0],pb);c.restore()}}}
  else if(b.k==='mo'){const n=b.st==='dizzy'?'mo_dizzy':b.st==='giggle'||b.st==='done'?'mo_purr':b.st==='pounce'||b.st==='hop'?'mo_pounce':'mo_tough';shadow(b.x,groundY(b.x),34);
-  c.save();c.translate(b.x,b.y+2);if(b.st==='crouch'){c.scale(1.08,0.88);c.rotate(Math.sin(t*30)*0.03)}spr(n,0,0,0.62,b.face>0);c.restore();
+  c.save();c.translate(b.x,b.y+2);if(b.st==='crouch'){c.scale(1.08,0.88);c.rotate(Math.sin(t*30)*0.03)}const mg=cutGait(b,b.x,3.3);if(n==='mo_tough')cutSpr(n,0,0,0.62,b.face>0,MO_LEGS,mg[0],mg[1]);else spr(n,0,0,0.62,b.face>0);c.restore();
   if(b.st==='dizzy'&&G.nd&&Math.abs(b.x-G.p.x)<110){c.globalAlpha=0.6+0.4*Math.sin(t*8);otext('ACTION: TICKLE!',b.x,b.y-120,15,'#a0ff80','center');c.globalAlpha=1}}
  else if(b.k==='storm'){for(const n of b.nests){spr('nest',n.x,n.y+6,1.2);if(n.doves)spr('doves',n.x,n.y-14,0.7);const full=n.n>=n.need;if(full){fluffBall(n.x,n.y-8,12)}
    else if(b.tgt===n){c.globalAlpha=0.6+0.4*Math.sin(t*6);otext('▼',n.x,n.y-(n.doves?96:40)+Math.sin(t*5)*4,22,'#a0ff80','center');c.globalAlpha=1}}
