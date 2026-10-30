@@ -401,7 +401,8 @@ function updatePlayer(p,dt){p.anim+=dt;p.inv=Math.max(0,p.inv-dt);p.squash=Math.
  p.phase+=Math.abs(p.vx)*dt/62;
  if(p.onG&&p.gk!==2){const tx=Math.floor(p.x/TS);if(solidK(tileAt(tx-1,Math.floor(p.y/TS)))&&solidK(tileAt(tx+1,Math.floor(p.y/TS))))p.safe={x:p.x,y:p.y}}
  if(p.y>LVH+90)fallPit(p)}
-function fallPit(p){if(p.dead)return;AU.fx('hurt');say('jt','Oops!',1);p.x=p.safe.x;p.y=p.safe.y;p.vx=p.vy=0;p.inv=1.5;if(!window.__GOD){p.hp--;if(p.hp<=0)loseTry('Out of hearts!')}flash('#ffffff',0.3)}
+function pitBack(p,fx){/*respawn fix: back up off the pit edge onto solid ground*/const d=sgn(fx-p.safe.x)||p.face||1,row=Math.floor(p.safe.y/TS),sx=p.safe.x,ok=x=>{const a=Math.floor((x-PH.w/2)/TS),b=Math.floor((x+PH.w/2)/TS);return solidK(tileAt(a,row))&&solidK(tileAt(b,row))&&!solidK(tileAt(a,row-1))&&!solidK(tileAt(b,row-1))&&!solidK(tileAt(a,row-2))&&!solidK(tileAt(b,row-2))};let ex=sx;for(let i=0;i<60;i++){if(!ok(ex+d*4))break;ex+=d*4}const need=PH.w*1.5+PH.w/2,dist=Math.abs(ex-sx);if(dist>=need)return sx;for(let k=need-dist;k>0;k-=6){if(ok(sx-d*k))return sx-d*k}return sx}
+function fallPit(p){if(p.dead)return;const bl=p.inv>0,fx=p.x;p.x=pitBack(p,fx);p.y=p.safe.y;p.vx=p.vy=0;if(bl){p.inv=Math.max(p.inv,1);return}/*blinking: free, silent*/AU.fx('hurt');say('jt','Oops!',1);p.inv=1.5;if(!window.__GOD){p.hp--;if(p.hp<=0)loseTry('Out of hearts!')}flash('#ffffff',0.3)}
 function hurtPlayer(p,src,why){if(p.inv>0||p.dead||G.won||G.cut)return;if(window.__GOD){p.inv=0.4;return}p.hp--;p.inv=1.5;AU.fx('bump');shake(7);flash('#ff6040',0.25);hitstop(0.05);
  const d=src!=null?sgn(p.x-src):-p.face;p.vx=d*300;p.vy=-380;G.hits=(G.hits||0)+1;if(why)say('jt',why,1);
  if(p.hp<=0)loseTry('Out of hearts!')}
