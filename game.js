@@ -963,7 +963,7 @@ const LOGO=`<div class="logo"><div class="l1">JIMOTHY TIMOTHY</div><div class="l
 function titleScreen(){state='title';G=null;AU.music('title');const cont=save.reached>0;
  show(`${LOGO}<div class="tbot"><div class="tbtns"><button class="btn go" data-a="play">▶ ${cont?'CONTINUE':'PLAY'}</button>${cont?'<button class="btn alt" data-a="new">NEW GAME</button>':''}
  <button class="btn alt" data-a="levels">MAP BOARD</button><button class="btn alt2" data-a="book">FOUND-IT BOOK</button><button class="btn dim" data-a="how">HOW TO PLAY</button></div>
- <p class="tag">"It's not stealing if it's in the trash."</p>${save.best?'<p class="sub">Best score: '+save.best.toLocaleString()+'</p>':''}<p class="ctl sub">${ctlLine()}</p></div>`,'title')}
+ <p class="tag">"Today's trash, tomorrow's treasure!"</p>${save.best?'<p class="sub">Best score: '+save.best.toLocaleString()+'</p>':''}<p class="ctl sub">${ctlLine()}</p></div>`,'title')}
 function storyScreen(i){/* Oct 30: SKIP button; once the intro has been seen, new games go straight to the first job */
  if(i===0&&window.SkipBtn&&SkipBtn.seen('hairmob-intro')){planScreen(0);return}
  state='story';const s=STORY_INTRO[i];
@@ -978,7 +978,8 @@ function clearScreen(){state='clear';const st=G.st,i=G.si;const caps=G.caps.filt
  if(st.trade&&st.trade.includes('feather')){save.feather=1}
  if(G.score>save.best)save.best=G.score;persist();
  const last=i>=STAGES.length-1;
- show(`<h2>${st.kind==='boss'?'SHOWDOWN WON!':'JOB DONE!'}</h2>${st.done.map(l=>'<p>'+l+'</p>').join('')}
+ const cq=Math.random()<0.25?"We call it upcycling! Today's trash, tomorrow's treasure!":"Today's trash, tomorrow's treasure!";
+ show(`<h2>${st.kind==='boss'?'SHOWDOWN WON!':'JOB DONE!'}</h2><p class="tag jtq">J.T.: "${cq}"</p>${st.done.map(l=>'<p>'+l+'</p>').join('')}
  <table class="st"><tr><td>Hair bags</td><td>${G.bags}</td></tr><tr><td>Gold curls</td><td>${G.curls}</td></tr><tr><td>Bottle caps</td><td>${'🔴'.repeat(caps)}${'⚪'.repeat(3-caps)}</td></tr>${G.clock&&!G.boss?'<tr><td>Time left</td><td>'+Math.max(0,Math.floor(G.clockLeft||0))+' min</td></tr>':''}<tr><td>Score</td><td>${G.score.toLocaleString()}</td></tr></table>${tr}
  <button class="btn go" data-a="${last?'ending':'next'}">${last?'THE END ▶':'NEXT JOB ▶'}</button>`,'menu');AU.music('win')}
 function endingScreen(i=0){state='ending';const e=ENDING[i];

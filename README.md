@@ -1,6 +1,6 @@
 # Jimothy Timothy and the Hair Mob
 
-Word on the street, they call him J.T.! Pull hair heists on a schedule with Noodles the ferret, drive the solar Jeep, and win 5 silly showdowns. It's not stealing if it's in the trash. A free game from Peter's Arcade.
+Word on the street, they call him J.T.! Pull hair heists on a schedule with Noodles the ferret, drive the solar Jeep, and win 5 silly showdowns. Today's trash, tomorrow's treasure! A free game from Peter's Arcade.
 
 Play: https://ploug76.github.io/jimothy-timothy-hair-mob/
 
