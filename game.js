@@ -952,11 +952,11 @@ function drawNdRig(n,x,y,flip,v){const im=IMG.nd_body;if(!im)return false;
 
 /* ===== menus (DOM) ===== */
 const ui=$('ui');
-function show(html,cls=''){ui.innerHTML='<div class="scr '+cls+'">'+html+'</div>';document.body.classList.add('uiopen');gpIdx=0;
+function show(html,cls=''){if(window.SkipBtn)SkipBtn.hide();ui.innerHTML='<div class="scr '+cls+'">'+html+'</div>';document.body.classList.add('uiopen');gpIdx=0;
  ui.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();AU.unlock();AU.fx('menu');act(b.dataset.a,b.dataset.v)}));
  if(GP.on||kbUsed)setTimeout(()=>gpFocus(0,1),30);$('bgart').hidden=!(cls.includes('title')||cls.includes('menu'))}
 let kbUsed=false;addEventListener('keydown',()=>kbUsed=true,{once:true});
-function hideUI(){ui.innerHTML='';document.body.classList.remove('uiopen');$('bgart').hidden=true}
+function hideUI(){if(window.SkipBtn)SkipBtn.hide();ui.innerHTML='';document.body.classList.remove('uiopen');$('bgart').hidden=true}
 function ctlLine(){return GP.on?'🎮 Stick/D-pad move · A jump · X or B action · Start pause':'Swipe &amp; hold to move · swipe up to jump · tap ACTION'}
 function refreshCtlHint(){const h=document.querySelector('#ui .ctl');if(h)h.innerHTML=ctlLine()}
 const LOGO=`<div class="logo"><div class="l1">JIMOTHY TIMOTHY</div><div class="l2">AND THE HAIR MOB</div><div class="l3">WORD ON THE STREET, THEY CALL HIM J.T.!</div></div>`;
@@ -964,8 +964,10 @@ function titleScreen(){state='title';G=null;AU.music('title');const cont=save.re
  show(`${LOGO}<div class="tbot"><div class="tbtns"><button class="btn go" data-a="play">▶ ${cont?'CONTINUE':'PLAY'}</button>${cont?'<button class="btn alt" data-a="new">NEW GAME</button>':''}
  <button class="btn alt" data-a="levels">MAP BOARD</button><button class="btn alt2" data-a="book">FOUND-IT BOOK</button><button class="btn dim" data-a="how">HOW TO PLAY</button></div>
  <p class="tag">"It's not stealing if it's in the trash."</p>${save.best?'<p class="sub">Best score: '+save.best.toLocaleString()+'</p>':''}<p class="ctl sub">${ctlLine()}</p></div>`,'title')}
-function storyScreen(i){state='story';const s=STORY_INTRO[i];
- show(`<img class="story" src="art/${s.img}.webp?v=${VERSION}" alt=""><p class="big">${s.t}</p><button class="btn go" data-a="story" data-v="${i+1}">NEXT ▶</button>`,'menu');AU.music('title')}
+function storyScreen(i){/* Oct 30: SKIP button; once the intro has been seen, new games go straight to the first job */
+ if(i===0&&window.SkipBtn&&SkipBtn.seen('hairmob-intro')){planScreen(0);return}
+ state='story';const s=STORY_INTRO[i];
+ show(`<img class="story" src="art/${s.img}.webp?v=${VERSION}" alt=""><p class="big">${s.t}</p><button class="btn go" data-a="story" data-v="${i+1}">NEXT ▶</button>`,'menu');AU.music('title');if(window.SkipBtn)SkipBtn.show(()=>{SkipBtn.seen('hairmob-intro',1);planScreen(0)})}
 function planScreen(i){state='plan';const st=STAGES[i],Wd=WORLDS[st.w];const icon=st.kind==='drive'?'jeep_side':st.kind==='boss'?'jt_point':'jt_point';
  show(`<div class="board"><div class="bh">${st.id} · ${Wd.name.toUpperCase()}</div><h2>${st.name}</h2><div class="chalk"><div class="ct">THE PLAN</div>${st.plan.map((l,k)=>'<p>'+(k+1)+'. '+l+'</p>').join('')}</div>
  ${st.clock||st.track?'<p class="sched">⏰ '+(st.clock||st.track.clock).what+'</p>':''}<img class="who" src="art/${icon}.webp?v=${VERSION}" alt=""></div>
@@ -1010,7 +1012,7 @@ function resumeGame(){hideUI();state='play';clearInput();last=performance.now()}
 function act(a,v){
  if(a==='play'){if(save.reached>0)planScreen(save.reached);else storyScreen(0)}
  else if(a==='new'){save.reached=0;save.items=[];persist();storyScreen(0)}
- else if(a==='story'){const n=+v;if(n<STORY_INTRO.length)storyScreen(n);else planScreen(0)}
+ else if(a==='story'){const n=+v;if(n<STORY_INTRO.length)storyScreen(n);else{if(window.SkipBtn)SkipBtn.seen('hairmob-intro',1);planScreen(0)}}
  else if(a==='go')startStage(+v);
  else if(a==='levels')levelsScreen();else if(a==='book')bookScreen();else if(a==='how')howScreen();
  else if(a==='hints'){save.hints=!save.hints;persist();bookScreen()}
