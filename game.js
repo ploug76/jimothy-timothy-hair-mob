@@ -784,7 +784,7 @@ function drawEnt(e){if(e.dead)return;const t=G.t;switch(e.k){
  case 'treat':{c.fillStyle='#d04a3a';c.beginPath();c.ellipse(e.x,e.y+10,18,6,0,0,TAU);c.fill();spr('fish',e.x,e.y+6,0.8);if(!e.home)otext('MO',e.x,e.y+22,11,'#fff','center');break}
  case 'spr':spr('sprinkler',e.x,e.y+2,0.8);if(e.on){c.fillStyle='rgba(150,210,255,.35)';c.beginPath();c.moveTo(e.x-6,e.y-20);c.lineTo(e.x-26,e.y-120);c.lineTo(e.x+26,e.y-120);c.lineTo(e.x+6,e.y-20);c.fill()}break;
  case 'cloud':c.globalAlpha=0.55;c.fillStyle='#ffb0d4';for(let i=0;i<7;i++){const a=i/7*TAU+t*0.6;c.beginPath();c.arc(e.x+Math.cos(a)*e.r*0.55,e.y+Math.sin(a)*e.r*0.35,e.r*0.5,0,TAU);c.fill()}c.globalAlpha=1;break;
- case 'cat':{const fl=(e.face||-1)>0;if(e.st==='nap'){spr('mo_purr',e.x,e.y+2,0.42,false);otext('z',e.x+18,e.y-50-Math.sin(t*2)*4,12,'#fff','center')}else if(e.st==='grump'||e.st==='chase'){kneeSpr('mo_tough',e,e.x,e.y+2,0.42,fl,MO_RIG)}else{e._ka=0;e._kx=undefined;spr('mo_pounce',e.x,e.y+2,0.42,fl)}break}
+ case 'cat':{const fl=(e.face||-1)>0;if(e.st==='nap'){spr('mo_purr',e.x,e.y+2,0.42,false);otext('z',e.x+18,e.y-50-Math.sin(t*2)*4,12,'#fff','center')}else if(e.st==='grump'||e.st==='chase'){const mv=moSideV(e),ms=Math.abs(mv);if(ms>12&&IMG.mo_side){e._ka=0;e._kx=undefined;drawMoSide(e,e.x,e.y+2,0.42,(e._mf||e.face||-1)<0,ms)}else{e._rph=undefined;kneeSpr('mo_tough',e,e.x,e.y+2,0.42,fl,MO_RIG)}}else{e._ka=0;e._kx=undefined;spr('mo_pounce',e.x,e.y+2,0.42,fl)}break}
  case 'door':{c.fillStyle='#4a2a1a';rr(e.x-26,e.y-110,52,110,6);c.fill();c.fillStyle='#e04040';c.fillRect(e.x+30,e.y-104,10,70);c.fillStyle='#fff';for(let i=0;i<4;i++)c.fillRect(e.x+30,e.y-98+i*16+((t*20)%16),10,5);
   spr(e.sweep>0?'sal_sweep':'sal_search',e.x-6,e.y+2,0.42,true);break}
  case 'patty':spr('patty',e.x,e.y+2,0.62,!e.on);if(e.on){c.fillStyle='#ffe060';c.beginPath();c.arc(e.x+18,e.y-70,4,0,TAU);c.fill()}break;
@@ -807,7 +807,7 @@ function drawBoss(b){if(!b)return;const t=G.t;
   for(const d of b.dogs){shadow(d.x,GY,30);if(d.st==='fluff'){spr('poodles',d.x,GY+2,0.62,d.face<0);c.fillStyle='rgba(255,250,252,.95)';for(let i=0;i<9;i++){const a=i/9*TAU;c.beginPath();c.arc(d.x+Math.cos(a)*34,GY-44+Math.sin(a)*30,20+Math.sin(t*6+i)*2,0,TAU);c.fill()}c.fillStyle='#222';c.beginPath();c.arc(d.x-8,GY-48,3,0,TAU);c.arc(d.x+8,GY-48,3,0,TAU);c.fill()}
    else kneeSpr('poodles',d,d.x,GY+2,0.62,d.face<0,POODLE_RIG)}}
  else if(b.k==='mo'){const n=b.st==='dizzy'?'mo_dizzy':b.st==='giggle'||b.st==='done'?'mo_purr':b.st==='pounce'||b.st==='hop'?'mo_pounce':'mo_tough';shadow(b.x,groundY(b.x),34);
-  c.save();c.translate(b.x,b.y+2);if(b.st==='crouch'){c.scale(1.08,0.88);c.rotate(Math.sin(t*30)*0.03)}if(n==='mo_tough')kneeSpr(n,b,0,0,0.62,b.face>0,MO_RIG,b.x);else{b._ka=0;b._kx=undefined;spr(n,0,0,0.62,b.face>0)}c.restore();
+  c.save();c.translate(b.x,b.y+2);if(b.st==='crouch'){c.scale(1.08,0.88);c.rotate(Math.sin(t*30)*0.03)}const bv=moSideV(b),bs=Math.abs(bv);if(n==='mo_tough'&&bs>12&&IMG.mo_side&&b.st!=='crouch'){b._ka=0;b._kx=undefined;drawMoSide(b,0,0,0.62,(b._mf||b.face)<0,bs)}else if(n==='mo_tough'){b._rph=undefined;kneeSpr(n,b,0,0,0.62,b.face>0,MO_RIG,b.x)}else{b._ka=0;b._kx=undefined;spr(n,0,0,0.62,b.face>0)}c.restore();
   if(b.st==='dizzy'&&G.nd&&Math.abs(b.x-G.p.x)<110){c.globalAlpha=0.6+0.4*Math.sin(t*8);otext('ACTION: TICKLE!',b.x,b.y-120,15,'#a0ff80','center');c.globalAlpha=1}}
  else if(b.k==='storm'){for(const n of b.nests){spr('nest',n.x,n.y+6,1.2);if(n.doves)spr('doves',n.x,n.y-14,0.7);const full=n.n>=n.need;if(full){fluffBall(n.x,n.y-8,12)}
    else if(b.tgt===n){c.globalAlpha=0.6+0.4*Math.sin(t*6);otext('▼',n.x,n.y-(n.doves?96:40)+Math.sin(t*5)*4,22,'#a0ff80','center');c.globalAlpha=1}}
@@ -933,9 +933,26 @@ function drawJTRig(p,x,y,flip,sx,sy){const im=IMG.jt_torso;if(!im)return false;
  c.save();c.translate(x,y);c.scale((flip?-1:1)*0.5*sx,0.5*sy);
  const hy=-33+bob;
  jtLeg(2,hy,t+Math.PI,amp,true);
- c.save();c.translate(10,hy);c.rotate(lean);c.translate(-10,-hy);c.drawImage(im,-57,-150+bob+Math.min(0,amp*2));
+ const sd=IMG.jt_side&&p.onG&&Math.abs(p.vx)>25;
+ c.save();c.translate(10,hy);c.rotate(lean);c.translate(-10,-hy);if(sd)c.drawImage(IMG.jt_side,10-73.5,-152+bob+Math.min(0,amp*2),122,125);else c.drawImage(im,-57,-150+bob+Math.min(0,amp*2));
  c.fillStyle='#8e8885';c.beginPath();c.ellipse(12,hy-1,25,9,0,0,TAU);c.fill();c.restore();
  jtLeg(20,hy+1,t,amp,false);c.restore();return true}
+/* Mo side view (Oct 30 2026): profile torso + jointed legs while he walks; front art stays for idle */
+function moLeg(hx,hy,t,amp,back){const s=Math.sin(t),cs=Math.cos(t);
+ const th=0.05+amp*0.6*s,kn=0.1+amp*(1.3*Math.pow(Math.max(0,cs),1.3)+0.12*Math.max(0,-cs));
+ const F=back?'#d27410':'#f08c12',L=back?'#5a2608':'#7a3410';
+ const k=rigLimb(hx,hy,th,19,back?15:17,F,L);c.fillStyle=F;c.beginPath();c.arc(k[0],k[1],back?7.5:8.5,0,TAU);c.fill();
+ const sa=th-kn,a=rigLimb(k[0],k[1],sa,15,back?12:14,F,L);
+ const fa=-sa*0.6-amp*0.25*Math.max(0,cs);
+ c.save();c.translate(a[0],a[1]);c.rotate(fa);c.fillStyle=L;c.beginPath();c.ellipse(5,1,12.5,6.6,0,0,TAU);c.fill();
+ c.fillStyle=back?'#e8c890':'#ffe0a8';c.beginPath();c.ellipse(5,0.2,10.8,5.2,0,0,TAU);c.fill();c.restore()}
+function moSideV(o){const dt=G.dtR||1/60;const v=o._mlx===undefined?0:(o.x-o._mlx)/dt;o._mlx=o.x;o._mv=(o._mv||0)+(v-(o._mv||0))*Math.min(1,dt*10);if(Math.abs(o._mv)>12)o._mf=Math.sign(o._mv);return o._mv}
+function drawMoSide(o,x,y,sc,flip,v){const im=IMG.mo_side;if(!im)return false;
+ const amp=rigStep(o,G.dtR||1/60,v>12,v,v<110?78:127,150),t=o._rph*TAU,bob=amp*3*Math.cos(2*t);
+ c.save();c.translate(x,y);c.scale((flip?-1:1)*0.5*sc,0.5*sc);const hy=-37+bob;
+ moLeg(-6,hy,t+Math.PI,amp,true);
+ c.drawImage(im,-80.3,hy-131,122.5,142.5);
+ moLeg(6,hy+1,t,amp,false);c.restore();return true}
 /* Noodles: ferret bound, four short legs under the long body */
 function ndLeg(hx,hy,t,amp,front,back){const s=Math.sin(t),cs=Math.cos(t),lift=Math.pow(Math.max(0,cs),1.3);
  const F=back?'#e4d6c8':'#fbf3ea',L=back?'#7a6658':'#8a7466';
