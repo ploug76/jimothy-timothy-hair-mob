@@ -114,7 +114,10 @@ AU.muted=!!save.muted;
 let W=0,H=0,DPR=1,S=1,VV=400,viewW=800,gameH=400,portrait=false,SAFE={t:0,r:0,b:0,l:0};
 let state='boot',G=null,frame=0,SIM=0;
 function readSafe(){const p=$('sp');if(!p)return;const cs=getComputedStyle(p);SAFE={t:parseFloat(cs.paddingTop)||0,r:parseFloat(cs.paddingRight)||0,b:parseFloat(cs.paddingBottom)||0,l:parseFloat(cs.paddingLeft)||0}}
-function resize(){W=innerWidth;H=innerHeight;DPR=Math.min(devicePixelRatio||1,2);cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);portrait=H>W*1.08;readSafe();
+/* Peter Oct 31 9:12 PM: iPhone cutoff fix - size to the VISIBLE viewport, re-check often */
+function viewWH(){const vv=window.visualViewport,de=document.documentElement;let w=innerWidth||de.clientWidth,h=innerHeight||de.clientHeight;
+ if(de.clientHeight>0)h=Math.min(h,de.clientHeight);if(vv&&vv.scale>0.99&&vv.scale<1.01){w=Math.min(w,vv.width)||w;h=Math.min(h,vv.height)||h}return[Math.max(1,Math.round(w)),Math.max(1,Math.round(h))]}
+function resize(){[W,H]=viewWH();DPR=Math.min(devicePixelRatio||1,2);cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);portrait=H>W*1.08;readSafe();
  if(portrait){const vw=clamp(W,380,470);S=W/vw;gameH=Math.round(H*0.62);VV=gameH/S}
  else{VV=VH;S=H/VH;gameH=H}
  viewW=W/S;layoutPad();document.body.classList.toggle('portrait',portrait)}
@@ -132,6 +135,7 @@ function layoutPad(){const pad=$('pad'),ba=$('bAct'),bj=$('bJump'),hint=$('swipe
   hint.style.display='none'}
  requestAnimationFrame(()=>{const r=e=>{const b=e.getBoundingClientRect();return{x:b.left,y:b.top,w:b.width,h:b.height}};PADR.act=r(ba);PADR.jump=r(bj)})}
 addEventListener('resize',resize);addEventListener('orientationchange',()=>setTimeout(resize,120));
+if(window.visualViewport)visualViewport.addEventListener('resize',()=>resize());setInterval(()=>{const [a,b]=viewWH();if(a!==W||b!==H)resize()},400);
 if(window.visualViewport)visualViewport.addEventListener('resize',resize);
 /* ---------- input ---------- */
 const K={L:0,R:0,U:0,D:0,J:0,A:0,Y:0};const KP={J:0,A:0,Y:0};const VIRT={jump:0,act:0},VIRTP={jump:0,act:0};const TOUCH=new Map();let swipeJump=0;
