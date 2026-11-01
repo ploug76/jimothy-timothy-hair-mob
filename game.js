@@ -122,14 +122,13 @@ let PADR={act:null,jump:null};
 function layoutPad(){const pad=$('pad'),ba=$('bAct'),bj=$('bJump'),hint=$('swipeHint');if(!pad)return;
  if(portrait){const top=gameH,ph=H-top;pad.style.top=top+'px';pad.style.height=ph+'px';
   const big=Math.round(clamp(ph*0.36,92,124)),sm=Math.round(big*0.84),bot=Math.round(clamp(ph*0.14,18,46))+SAFE.b;
-  /* Peter Oct 30 9:40 PM: cluster like his screenshot - JUMP big orange far bottom-right, ACTION smaller green up-left of it */
-  Object.assign(bj.style,{width:big+'px',height:big+'px',left:'',right:((16+SAFE.r))+'px',bottom:bot+'px'});
-  Object.assign(ba.style,{width:sm+'px',height:sm+'px',left:'',right:((16+SAFE.r)+big+14)+'px',bottom:(bot+big*0.42)+'px'});
-  if(bot+big*0.42+sm>ph-8)ba.style.bottom=(ph-sm-8)+'px';
+  /* Peter Oct 31 9:10 PM: NES pad - ACTION (green) left, JUMP (orange) right, level, both the old ACTION size */
+  Object.assign(bj.style,{width:sm+'px',height:sm+'px',left:'',right:((16+SAFE.r))+'px',bottom:bot+'px'});
+  Object.assign(ba.style,{width:sm+'px',height:sm+'px',left:'',right:((16+SAFE.r)+sm+18)+'px',bottom:bot+'px'});bj.style.setProperty('font-size',Math.round(Math.min(25,sm*0.27))+'px','important');ba.style.setProperty('font-size',Math.round(Math.min(18,sm*0.19))+'px','important');
   hint.style.display='';Object.assign(hint.style,{top:'12px',left:(14+SAFE.l)+'px',right:'14px'})}
  else{pad.style.top='0';pad.style.height=H+'px';const big=Math.round(clamp(H*0.21,72,96)),sm=Math.round(big*0.82);
-  Object.assign(bj.style,{width:big+'px',height:big+'px',left:'',right:((14+SAFE.r))+'px',bottom:((12+SAFE.b))+'px'});
-  Object.assign(ba.style,{width:sm+'px',height:sm+'px',left:'',right:((14+SAFE.r)+big+10)+'px',bottom:((12+SAFE.b)+big*0.18)+'px'});
+  Object.assign(bj.style,{width:sm+'px',height:sm+'px',left:'',right:((14+SAFE.r))+'px',bottom:((12+SAFE.b))+'px'});
+  Object.assign(ba.style,{width:sm+'px',height:sm+'px',left:'',right:((14+SAFE.r)+sm+16)+'px',bottom:(12+SAFE.b)+'px'});bj.style.setProperty('font-size',Math.round(Math.min(25,sm*0.27))+'px','important');ba.style.setProperty('font-size',Math.round(Math.min(18,sm*0.19))+'px','important');
   hint.style.display='none'}
  requestAnimationFrame(()=>{const r=e=>{const b=e.getBoundingClientRect();return{x:b.left,y:b.top,w:b.width,h:b.height}};PADR.act=r(ba);PADR.jump=r(bj)})}
 addEventListener('resize',resize);addEventListener('orientationchange',()=>setTimeout(resize,120));
